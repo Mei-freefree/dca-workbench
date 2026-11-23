@@ -1,12 +1,14 @@
 {
-  "lastRun": "2026-11-23 11:53:13",
+  "lastRun": "2026-11-23 20:45:35",
   "snapshot": {
     "a500": {
-      "asOf": "2026-11-20",
-      "close": 4693.28,
-      "dd": 26.36,
+      "asOf": "2026-11-23",
+      "close": 4719.52,
+      "dd": 25.95,
       "high": 6373.56,
       "highDate": "2026-06-22",
+      "quote": "close",
+      "quoteTime": "",
       "src": "sina"
     },
     "ndx": {
@@ -15,6 +17,8 @@
       "dd": 19.84,
       "high": 31224.47,
       "highDate": "2026-10-06",
+      "quote": "close",
+      "quoteTime": "",
       "src": "sina"
     }
   },
