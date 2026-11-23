@@ -264,6 +264,8 @@ def main():
         live = None
         if t.get("live"):
             q = quote_cn(t["live"])
+            print("[quote] %s: %s" % (t["label"], "取数失败" if not q else
+                                      "%.2f @ %s %s" % (q["price"], q["date"], q["time"])))
             if q and q["date"] == TODAY:
                 if is_trading_a(q["date"], q["time"]):
                     live = (q["price"], q["date"], "intraday", q["time"][:5])
