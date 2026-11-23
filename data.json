@@ -1,6 +1,6 @@
 {
-  "generated": "2026-11-23 20:49 UTC",
-  "lastRun": "2026-11-23 20:49:15",
+  "generated": "2026-11-24 02:29 UTC",
+  "lastRun": "2026-11-24 02:29:33",
   "targets": {
     "a500": {
       "label": "中证A500",
@@ -12,7 +12,7 @@
       "dd": 25.95,
       "quote": "close",
       "quoteTime": "",
-      "live": true,
+      "live": false,
       "next": 30,
       "nextPrice": 4461.49,
       "dropToNext": 5.47,
