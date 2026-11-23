@@ -409,8 +409,9 @@ function pageRule() {
     <div class="h">数据口径（锁死）</div>
     <ul class="rules">
       <li>基准 = 收盘价口径的 52 周滚动高点</li>
-      <li>当前值 = 最近完整收盘价（14:30 时用前一交易日）</li>
-      <li>不看盘中、不看期货、不看净值、不看「最大回撤」</li>
+      <li>当前值：A股用 <b>14:25 / 14:50 那一刻的实时价</b>（未收盘、会变）；纳指用今日凌晨那次收盘（美股此时没开盘，已是最新）</li>
+      <li>不看期货、不看净值、不看「最大回撤」；盘中价只决定「跌没跌破」，不写进历史序列</li>
+      <li>成交价 = 你 15:00 前下单，按<b>当日收盘净值</b>成交 —— 与你判断时的盘中价可能不同，这是这套口径的代价</li>
     </ul>
   </div>`;
 }
@@ -526,7 +527,34 @@ function pageSettings() {
     <textarea class="inp" id="imp" rows="3" placeholder='{"cfg":{...},"data":{...},"log":[...]}'></textarea>
     <button class="btn ghost" id="btn_import" style="padding:6px 12px;font-size:12px;margin-top:8px">导入</button>
     <div class="tiny" id="impmsg" style="margin-top:6px"></div>
+  </div>
+
+  <div class="card">
+    <div class="h">打开方式</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span id="modeState" class="pill">检测中</span>
+    </div>
+    <div class="tiny" id="modeHint">正在检测……</div>
   </div>`;
+}
+
+function updateModeInfo() {
+  const el = document.getElementById("modeState");
+  if (!el) return;
+  const standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+    navigator.standalone === true;
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  el.textContent = standalone ? "独立应用 · 全屏" : "浏览器标签页";
+  el.className = "pill " + (standalone ? "on" : "off");
+  const hint = document.getElementById("modeHint");
+  if (hint) {
+    hint.textContent = standalone
+      ? "已生效：没有地址栏和浏览器底栏。"
+      : (ios
+        ? "iPhone 上必须用 Safari 打开 → 分享 → 添加到主屏幕，再从桌面图标进入，才是全屏。用 Chrome、微信或旧的快捷方式都会带浏览器栏。"
+        : "安卓：请用 Chrome，菜单里选「安装应用」；微信 / 夸克 / 手机自带浏览器通常只会建普通快捷方式，一定带浏览器栏。");
+  }
 }
 
 /* ============ 7. 渲染与事件 ============ */
@@ -534,11 +562,19 @@ const VIEW = document.getElementById("view");
 let TAB = "home";
 const PAGES = { home: pageHome, ladder: pageLadder, log: pageLog, rule: pageRule, settings: pageSettings };
 
+function quoteTag() {
+  const ks = Object.keys(CFG.targets).filter(k => DATA[k] && DATA[k].quote === "intraday");
+  if (!ks.length) return " · 收盘价口径";
+  const tm = (DATA[ks[0]] && DATA[ks[0]].quoteTime) || "";
+  return ` · 盘中实时${tm ? " " + tm : ""}（未收盘）`;
+}
+
 function render() {
-  document.getElementById("asof").textContent = `数据基准 ${DATA.asOf} · 收盘价口径 · ` +
+  document.getElementById("asof").textContent = `数据基准 ${DATA.asOf}` + quoteTag() + " · " +
     (DATA.src === "auto" ? `自动同步${DATA.generated ? "（" + DATA.generated + "）" : ""}` : "本机保存");
   VIEW.innerHTML = PAGES[TAB]();
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === TAB));
+  updateModeInfo();
   window.scrollTo(0, 0);
 }
 
@@ -666,6 +702,8 @@ function applyAutoData(auto) {
     if (!(k in CFG.targets)) return;                     // 页面里没有这只标的就跳过
     DATA[k] = DATA[k] || { close: 0, high: 0 };
     if (t.close > 0 && t.high > 0) { DATA[k].close = t.close; DATA[k].high = t.high; }
+    DATA[k].quote = t.quote || "close";
+    DATA[k].quoteTime = t.quoteTime || "";
     if (t.used != null) { DATA.used = DATA.used || {}; DATA.used[k] = t.used; }
     if (Array.isArray(t.consumed)) { DATA.consumed = DATA.consumed || {}; DATA.consumed[k] = t.consumed; }
   });

@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-定投补仓信号检查（收盘口径）
+定投补仓信号检查（14:25 / 14:50 决策时点口径）
 
 规则（与飞飞手写纪律一致）：
   基准 = 最近 252 个完整收盘里的最高收盘价（52 周滚动高）
-  回撤 = (基准 - 最近完整收盘) / 基准
+  当前值：
+    · A股（中证A500）—— 交易时段内取「当时最新价」，也就是 14:25 / 14:50 的盘中价，
+      盘中价未收盘、会变，这是飞飞明确要求的：做决定时点看当时的数。
+      收盘后跑则取当日收盘价。
+    · 纳斯达克100 —— 美股在北京时间 14:25 时尚未开盘，能拿到的最新值就是
+      「今日凌晨那次收盘」，即隔夜收盘价，本身已是最新，不存在替代方案。
+  回撤 = (基准 - 当前值) / 基准
   只补「当日首次跌破且尚未消化」的档位；反弹站上该档则该档复活；回撤归零全档复位
   每只标的月度封顶；额度按自然月自动重置
 输出：Markdown 摘要 + 可选推送（Server酱 / PushPlus / Bark / Telegram）
@@ -44,6 +50,8 @@ TARGETS = [
         "levels": [(6, 100), (12, 100), (20, 200), (30, 200), (40, 200)],
         # 东财在 GitHub Actions 里基本取不到数（被限流/不可达），只留新浪源，避免每次多一条噪音告警
         "prefer": "sina", "em": None, "sina": ("cn", "sh000510"),
+        # 交易时段内用实时价（14:25 / 14:50 的当时价），不用昨天收盘价
+        "live": "sh000510",
     },
     {
         # 注意：东财 secid=100.NDX 返回的其实是「纳斯达克综合指数(IXIC)」的数值
@@ -108,19 +116,67 @@ def closes_sina(kind, code):
 
 
 def drop_today(rows):
-    """14:30 检查时当天这根 K 线还没收盘，必须丢掉（收盘口径）"""
+    """14:30 检查时当天这根 K 线还没收盘，必须丢掉（历史序列只用完整收盘）"""
     return [r for r in rows if r[0] != TODAY]
 
 
-def stats(rows):
-    rows = drop_today(sorted(rows))
+def quote_cn(code):
+    """A股实时行情（新浪，GBK 编码）。返回 {price, date, time, name} 或 None。"""
+    url = "https://hq.sinajs.cn/list=%s" % code
+    try:
+        req = urllib.request.Request(url, headers={
+            "User-Agent": UA,
+            "Referer": "https://finance.sina.com.cn",
+            "Accept": "*/*",
+        })
+        with urllib.request.urlopen(req, timeout=15) as r:
+            raw = r.read().decode("gbk", "ignore")
+        body = raw.split('"')[1]
+        f = body.split(",")
+        if len(f) < 32 or not f[3]:
+            return None
+        return {"name": f[0], "price": float(f[3]), "date": f[30], "time": f[31]}
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def is_trading_a(price_date, price_time):
+    """这笔行情是不是「今天、盘中」（9:30-11:30 / 13:00-15:00）"""
+    if price_date != TODAY:
+        return False
+    try:
+        m = int(price_time[:2]) * 60 + int(price_time[3:5])
+    except ValueError:
+        return False
+    return (9 * 60 + 30) <= m <= 11 * 60 + 30 or 13 * 60 <= m <= 15 * 60
+
+
+def today_closed():
+    """今天的 A 股收盘是不是已经出来了（周末或 15:00 之后）"""
+    return NOW.weekday() >= 5 or (NOW.hour * 60 + NOW.minute) >= 15 * 60
+
+
+def stats(rows, live=None, drop_now=None):
+    """
+    live = (price, date, kind, hhmm) —— 交易时段用当时最新价替换「当前值」。
+    52 周高永远只用完整收盘序列计算（盘中价不进历史窗口）。
+    """
+    if drop_now is None:
+        drop_now = not today_closed()
+    rows = sorted(rows)
+    if drop_now:
+        rows = drop_today(rows)
     win = rows[-LOOKBACK:]
     hi_date, hi = max(win, key=lambda x: x[1])
     cur_date, cur = rows[-1]
+    kind, hhmm = "close", ""
+    if live:
+        cur, cur_date, kind, hhmm = live
     dd = (hi - cur) / hi * 100.0
     return {
         "n": len(win), "high": hi, "high_date": hi_date,
         "cur": cur, "cur_date": cur_date, "dd": dd,
+        "quote": kind, "quote_time": hhmm,
     }
 
 
@@ -161,6 +217,7 @@ def write_data_json(state):
             "asOf": s["asOf"], "close": s["close"],
             "high": round(s["high"], 2), "highDate": s.get("highDate", ""),
             "dd": round(s["dd"], 2),
+            "quote": s.get("quote", "close"), "quoteTime": s.get("quoteTime", ""),
             "next": nxt, "nextPrice": nxt_price, "dropToNext": drop,
             "used": st.get("used", 0), "cap": t["cap"],
             "consumed": st.get("consumed") or [],
@@ -202,11 +259,24 @@ def main():
         for n in (t.get("prefer"), "sina", "em"):
             if t.get(n) and n not in order:
                 order.append(n)
+
+        # 交易时段：用「现在这一刻」的价格判断，而不是昨天收盘
+        live = None
+        if t.get("live"):
+            q = quote_cn(t["live"])
+            if q and q["date"] == TODAY:
+                if is_trading_a(q["date"], q["time"]):
+                    live = (q["price"], q["date"], "intraday", q["time"][:5])
+                else:
+                    live = (q["price"], q["date"], "close", "")
+            elif q and not q["date"]:
+                warns.append("%s: 实时行情返回空" % t["label"])
+
         got = {}
         for name in order:
             try:
                 rows = closes_em(t["em"]) if name == "em" else closes_sina(*t["sina"])
-                got[name] = stats(rows)
+                got[name] = stats(rows, live)
             except Exception as e:  # noqa: BLE001
                 warns.append("%s: %s 源取数失败（%s）" % (t["label"], name, str(e)[:60]))
 
@@ -273,6 +343,7 @@ def main():
             "asOf": s["cur_date"], "close": round(s["cur"], 2),
             "high": round(s["high"], 2), "highDate": s["high_date"],
             "dd": round(dd, 2), "src": pref,
+            "quote": s["quote"], "quoteTime": s["quote_time"],
         }
 
     state["lastRun"] = NOW.strftime("%Y-%m-%d %H:%M:%S")
@@ -280,6 +351,12 @@ def main():
     write_data_json(state)
 
     head = "### 补仓信号检查 · %s %s\n\n" % (TODAY, NOW.strftime("%H:%M"))
+    snaps = state.get("snapshot") or {}
+    intra = [t["label"] for t in TARGETS
+             if (snaps.get(t["key"]) or {}).get("quote") == "intraday"]
+    if intra:
+        head += ("> %s 用的是**盘中实时价**（%s，未收盘、会变）；其余为隔夜收盘价。\n\n"
+                 % ("、".join(intra), NOW.strftime("%H:%M")))
     if alerts:
         head += "**今日有加仓信号：" + "；".join(
             "%s 跌破 %d%% 档，可补 %d 元" % (a["label"], a["level"], a["amount"]) for a in alerts
@@ -353,7 +430,10 @@ def push_body(alerts, state, warns):
                     % (nxt, lv_price, gap_pts, drop))
         else:
             tail = "档位已全部消化"
-        out.append("- **%s**（%s）：回撤 **%.2f%%**，%s" % (t["label"], t["fund"], snap["dd"], tail))
+        out.append("- **%s**（%s）：回撤 **%.2f%%**%s，%s"
+                   % (t["label"], t["fund"], snap["dd"],
+                      ("（%s 盘中，未收盘）" % snap.get("quoteTime", ""))
+                      if snap.get("quote") == "intraday" else "", tail))
 
     tstate = state.get("targets") or {}
     cap_txt = []
