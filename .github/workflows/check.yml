@@ -1,0 +1,48 @@
+name: 定投补仓信号检查
+
+on:
+  schedule:
+    # 北京时间 14:25 与 14:50（UTC 06:25 / 06:50），周一至周五
+    # 两次是为了对冲 GitHub 定时任务排队延迟，第二次若已补过档会自动跳过
+    - cron: "25 6 * * 1-5"
+    - cron: "50 6 * * 1-5"
+  workflow_dispatch: {}   # 也可以在网页上手动点一次试试
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dca-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 检查信号
+        env:
+          SCT_KEY: ${{ secrets.SCT_KEY }}
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          BARK_URL: ${{ secrets.BARK_URL }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT: ${{ secrets.TG_CHAT }}
+        run: python check.py
+
+      - name: 回写状态与页面数据
+        run: |
+          if [ -n "$(git status --porcelain state.json data.json)" ]; then
+            git config user.name "dca-bot"
+            git config user.email "dca-bot@users.noreply.github.com"
+            git add state.json data.json
+            git commit -m "data: $(date -u '+%Y-%m-%d %H:%M') UTC"
+            git push
+          else
+            echo "state.json / data.json 无变化"
+          fi
