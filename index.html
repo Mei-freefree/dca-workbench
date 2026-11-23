@@ -527,7 +527,8 @@ let TAB = "home";
 const PAGES = { home: pageHome, ladder: pageLadder, log: pageLog, rule: pageRule, settings: pageSettings };
 
 function render() {
-  document.getElementById("asof").textContent = `数据基准 ${DATA.asOf} · 收盘价口径 · 本机保存`;
+  document.getElementById("asof").textContent = `数据基准 ${DATA.asOf} · 收盘价口径 · ` +
+    (DATA.src === "auto" ? `自动同步${DATA.generated ? "（" + DATA.generated + "）" : ""}` : "本机保存");
   VIEW.innerHTML = PAGES[TAB]();
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === TAB));
   window.scrollTo(0, 0);
@@ -557,9 +558,14 @@ VIEW.addEventListener("click", e => {
       }
     });
     DATA.asOf = asof;
+    DATA.src = "manual";
     save(K_DATA, DATA); render(); return;
   }
-  if (t.id === "btn_resetdata") { DATA = JSON.parse(JSON.stringify(DEFAULT_DATA)); save(K_DATA, DATA); render(); return; }
+  if (t.id === "btn_resetdata") {
+    DATA = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    DATA.src = "manual";
+    save(K_DATA, DATA); render(); return;
+  }
 
   /* ---- 设置页 ---- */
   if (t.id === "btn_savecfg") { collectCfg(); saveCfg(); render(); return; }
@@ -642,6 +648,32 @@ VIEW.addEventListener("click", e => {
 });
 
 render();
+
+/* ============ 8. 自动数据：读 Actions 生成的 data.json ============ */
+function applyAutoData(auto) {
+  if (!auto || !auto.targets) return false;
+  if (auto.asOf && DATA.asOf && auto.asOf < DATA.asOf) return false;  // 本机手填的更新，不覆盖
+  Object.keys(auto.targets).forEach(k => {
+    const t = auto.targets[k] || {};
+    if (!(k in CFG.targets)) return;                     // 页面里没有这只标的就跳过
+    DATA[k] = DATA[k] || { close: 0, high: 0 };
+    if (t.close > 0 && t.high > 0) { DATA[k].close = t.close; DATA[k].high = t.high; }
+    if (t.used != null) { DATA.used = DATA.used || {}; DATA.used[k] = t.used; }
+    if (Array.isArray(t.consumed)) { DATA.consumed = DATA.consumed || {}; DATA.consumed[k] = t.consumed; }
+  });
+  if (auto.asOf) DATA.asOf = auto.asOf;
+  DATA.usedMonth = (auto.asOf || DATA.asOf).slice(0, 7);
+  DATA.src = "auto";
+  DATA.generated = auto.generated || "";
+  save(K_DATA, DATA);
+  render();
+  return true;
+}
+
+fetch("./data.json", { cache: "no-store" })
+  .then(r => (r.ok ? r.json() : null))
+  .then(auto => { applyAutoData(auto); })
+  .catch(() => { /* 本地打开、或还没生成 data.json 时，用手填数字 */ });
 </script>
 </body>
 </html>

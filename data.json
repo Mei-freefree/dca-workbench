@@ -1,0 +1,41 @@
+{
+  "generated": "2026-11-23 11:43 UTC",
+  "lastRun": "2026-11-23 11:43:12",
+  "targets": {
+    "a500": {
+      "label": "中证A500",
+      "fund": "022459",
+      "asOf": "2026-11-20",
+      "close": 4693.28,
+      "high": 6373.56,
+      "highDate": "2026-06-22",
+      "dd": 26.36,
+      "next": 30,
+      "nextPrice": 4461.49,
+      "dropToNext": 4.94,
+      "used": 400,
+      "cap": 400,
+      "consumed": [
+        6,
+        12,
+        20
+      ]
+    },
+    "ndx": {
+      "label": "纳斯达克100",
+      "fund": "019172",
+      "asOf": "2026-11-20",
+      "close": 25028.98,
+      "high": 31224.47,
+      "highDate": "2026-10-06",
+      "dd": 19.84,
+      "next": 25,
+      "nextPrice": 23418.35,
+      "dropToNext": 6.44,
+      "used": 0,
+      "cap": 40,
+      "consumed": []
+    }
+  },
+  "asOf": "2026-11-20"
+}
