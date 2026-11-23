@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>飞飞 · 定投工作台</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#fff; --ink:#15181d; --muted:#8b919c; --line:#e9ecf0;
+  --accent:#2f6fed; --warn:#e8892b; --good:#22a06b; --bad:#e0503f;
+  --radius:14px; --shadow:0 1px 3px rgba(16,24,40,.06),0 1px 2px rgba(16,24,40,.04);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  padding-bottom:76px;
+}
+.wrap{max-width:520px;margin:0 auto;padding:14px 14px 0}
+header{position:sticky;top:0;z-index:9;background:rgba(245,246,248,.92);backdrop-filter:blur(8px);padding:10px 0 8px}
+h1{font-size:17px;margin:0;letter-spacing:.2px}
+.sub{font-size:11px;color:var(--muted);margin-top:2px}
+.card{background:var(--card);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);margin-bottom:12px}
+.h{font-size:13px;font-weight:600;color:var(--muted);margin:0 0 10px;letter-spacing:.3px}
+.big{font-size:26px;font-weight:700;letter-spacing:-.5px}
+.row{display:flex;gap:10px}
+.row>*{flex:1;min-width:0}
+.stat{background:var(--card);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow)}
+.stat .k{font-size:11px;color:var(--muted)}
+.stat .v{font-size:17px;font-weight:700;margin-top:2px;white-space:nowrap}
+.banner{border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);background:var(--card);border-left:4px solid var(--muted);margin-bottom:12px}
+.banner.yes{border-left-color:var(--warn)}
+.banner.no{border-left-color:var(--good)}
+.banner .t{font-size:16px;font-weight:700}
+.banner .d{font-size:12.5px;color:var(--muted);margin-top:4px}
+.bar{height:8px;border-radius:99px;background:#eef0f4;overflow:hidden;margin-top:8px}
+.bar>i{display:block;height:100%;border-radius:99px;background:var(--accent)}
+.bar>i.warn{background:var(--warn)}
+.mono{font-variant-numeric:tabular-nums}
+.tiny{font-size:12px;color:var(--muted)}
+.dots{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin-top:6px}
+.dot{aspect-ratio:1;border-radius:5px;background:#e9ecf0}
+.dot.on{background:var(--accent)}
+.dot.used{background:#d9dde5}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:8px 4px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--muted);font-weight:500;font-size:11.5px}
+tr:last-child td{border-bottom:0}
+.pill{display:inline-block;font-size:11px;padding:2px 7px;border-radius:99px;background:#eef1f6;color:#5b6270}
+.pill.ok{background:#e7f6ef;color:#1c7d54}
+.pill.warn{background:#fdf1e3;color:#a8641b}
+.pill.off{background:#f0f2f5;color:#9aa0ab}
+ul.rules{padding-left:18px;margin:0;line-height:1.9;font-size:13.5px}
+ul.rules li{margin-bottom:2px}
+nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;padding:6px 0 max(6px,env(safe-area-inset-bottom))}
+nav button{flex:1;background:none;border:0;font:inherit;font-size:11px;color:var(--muted);padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+nav button .ic{font-size:17px;line-height:1}
+nav button.on{color:var(--accent);font-weight:600}
+.btn{border:0;border-radius:10px;padding:9px 14px;font:inherit;font-size:13.5px;font-weight:600;background:var(--accent);color:#fff;cursor:pointer}
+.btn.ghost{background:#eef1f6;color:#3c4350}
+.btn:disabled{opacity:.4;cursor:default}
+.field{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px}
+.field label{width:96px;color:var(--muted);flex:none}
+.field input{flex:1;min-width:0;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font:inherit;font-size:13px;background:#fbfcfd}
+.gauge{position:relative;width:104px;height:104px;margin:0 auto}
+.gauge svg{transform:rotate(-90deg)}
+.gauge .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gauge .num b{font-size:17px}
+.gauge .num span{font-size:10px;color:var(--muted)}
+.empty{color:var(--muted);font-size:13px;text-align:center;padding:18px 0}
+.inp{border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:13px;background:#fbfcfd;min-width:0;width:100%}
+.minirow{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+details summary{cursor:pointer;font-size:13px;color:var(--accent);font-weight:600;list-style:none}
+details summary::-webkit-details-marker{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>飞飞 · 定投工作台</h1>
+    <div class="sub" id="asof">数据基准载入中…</div>
+  </header>
+  <main id="view"></main>
+</div>
+<nav id="nav">
+  <button data-tab="home" class="on"><span class="ic">◎</span>概览</button>
+  <button data-tab="ladder"><span class="ic">≡</span>档位</button>
+  <button data-tab="log"><span class="ic">✎</span>记录</button>
+  <button data-tab="rule"><span class="ic">✓</span>纪律</button>
+  <button data-tab="settings"><span class="ic">⚙</span>设置</button>
+</nav>
+<script>
+"use strict";
+
+/* ============ 1. 配置：只改这里 ============ */
+const CFG = {
+  totalAssets: 0,
+  monthlyDCA: 672,
+  ammo: 0,             // 纯补仓子弹（第一次打开请到「设置」填自己的数）
+  emergency: 0,        // 微信应急金，独立
+  funds: [
+    { code: "022459", name: "易方达中证A500", freq: "每周 25", perMonth: 108, tag: "A股宽基" },
+    { code: "017641", name: "摩根标普500",   freq: "每日 10", perMonth: 210, tag: "美股宽基" },
+    { code: "016452", name: "南方纳指100",   freq: "每日 10", perMonth: 210, tag: "美股科技" },
+    { code: "002849", name: "金信智能中国2025", freq: "每周 15", perMonth: 65, tag: "A股防御" },
+    { code: "012733", name: "易方达人工智能", freq: "每周 15", perMonth: 65, tag: "AI赛道" }
+  ],
+  targets: {
+    a500: { label: "中证A500", code: "022459", cap: 400,
+      levels: [[6,100],[12,100],[20,200],[30,200],[40,200]] },
+    ndx:  { label: "纳斯达克100", code: "019172 平替", cap: 40,
+      levels: [[25,10],[30,10],[35,10],[40,10]] }
+  }
+};
+
+/* ============ 2. 数据（可手动改，未来由 Actions 写入） ============ */
+const DEFAULT_DATA = {
+  asOf: "2026-11-20",
+  a500: { close: 4693.28, high: 6373.56 },
+  ndx:  { close: 25028.98, high: 31224.47 },
+  // 已知已消化的档位（A500 在 11 月已补过 6/12/20 三档，合计 400）
+  consumed: { a500: [6, 12, 20], ndx: [] },
+  // 本月已用额度，按月重置
+  // A500：11 月已补 6/12/20 三档 = 400 元
+  // 纳指：25% 档还没触发（当前回撤约 19.8%），本月实际 0 元
+  usedMonth: "2026-11",
+  used: { a500: 400, ndx: 0 }
+};
+
+/* ============ 3. 存储 ============ */
+const K_DATA = "dca.data.v2", K_LOG = "dca.log.v2";
+const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
+const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+
+let DATA = load(K_DATA, DEFAULT_DATA);
+let LOG  = load(K_LOG, []);
+
+/* 用户改过的规则（基金列表、档位、弹药…）存在本机，加载时覆盖默认值 */
+const K_CFG = "dca.cfg.v2";
+Object.assign(CFG, load(K_CFG, {}));
+const CFG_DEFAULT = JSON.parse(JSON.stringify(CFG));
+/* 新增标的时保证 DATA / 额度桶这些结构存在 */
+Object.keys(CFG.targets).forEach(k => {
+  if (!DATA[k]) DATA[k] = { close: 0, high: 0 };
+  if (!DATA.used) DATA.used = {};
+  if (!DATA.consumed) DATA.consumed = {};
+  if (DATA.used[k] == null) DATA.used[k] = 0;
+  if (!DATA.consumed[k]) DATA.consumed[k] = [];
+});
+
+/* ============ 4. 计算 ============ */
+const dd = t => { const d = DATA[t]; return (d && d.high) ? (d.high - d.close) / d.high * 100 : 0; };
+const fmt2 = n => (Math.round(n * 100) / 100).toFixed(2);
+const money = n => n.toLocaleString("zh-CN");
+const thisMonth = () => DATA.asOf.slice(0, 7);
+
+function usedThisMonth(key) {
+  if (DATA.usedMonth !== thisMonth()) {           // 跨月自动重置
+    DATA.usedMonth = thisMonth();
+    DATA.used = {}; DATA.consumed = {};
+    Object.keys(CFG.targets).forEach(k => { DATA.used[k] = 0; DATA.consumed[k] = []; });
+    save(K_DATA, DATA);
+  }
+  return DATA.used[key] || 0;
+}
+function consumedLevels(key) {
+  const base = (DATA.consumed && DATA.consumed[key]) || [];
+  return new Set([...base, ...LOG.filter(r => r.target === key).map(r => r.level)]);
+}
+/* 下一档 = 当前回撤还没到、且没被消化过的最小档位 */
+function nextLevel(key) {
+  const cur = dd(key), done = consumedLevels(key);
+  for (const [lv, amt] of CFG.targets[key].levels) {
+    if (cur < lv) return { level: lv, amount: amt, far: true };
+    if (!done.has(lv)) return { level: lv, amount: amt, far: false };
+  }
+  return null;
+}
+function signal() {
+  const out = [];
+  for (const key of Object.keys(CFG.targets)) {
+    const cur = dd(key);
+    const done = consumedLevels(key);
+    const hit = CFG.targets[key].levels.filter(([lv]) => cur >= lv && !done.has(lv));
+    if (!hit.length) continue;
+    const monthUsed = usedThisMonth(key);
+    const cap = CFG.targets[key].cap;
+    const room = cap - monthUsed;
+    const [lv, amt] = hit[hit.length - 1];
+    out.push({ key, level: lv, amount: Math.min(amt, Math.max(room, 0)), room, cap, monthUsed });
+  }
+  return out;
+}
+function ammoLeft() {
+  const keys = Object.keys(CFG.targets);
+  const used = keys.reduce((s, k) => s + usedThisMonth(k), 0);
+  const left = CFG.ammo - used;
+  // 一轮完整下跌：把两只基金每一档都按规矩补一遍要花多少
+  const cycle = keys.reduce((s, k) =>
+    s + CFG.targets[k].levels.reduce((a, [, amt]) => a + amt, 0), 0);
+  const capMonth = keys.reduce((s, k) => s + CFG.targets[k].cap, 0);
+  return {
+    left, used, cycle, capMonth,
+    rounds: left / cycle,        // 还够几轮完整下跌
+    months: left / capMonth      // 每月都打满够几个月
+  };
+}
+
+/* ============ 5. 小组件 ============ */
+function bar(pct, warn) {
+  const p = Math.max(0, Math.min(100, pct));
+  return `<div class="bar"><i class="${warn ? "warn" : ""}" style="width:${p}%"></i></div>`;
+}
+function ring(pct, label, val) {
+  const p = Math.max(0, Math.min(100, pct)), r = 44, c = 2 * Math.PI * r;
+  return `<div class="gauge">
+    <svg width="104" height="104">
+      <circle cx="52" cy="52" r="${r}" fill="none" stroke="#eef0f4" stroke-width="9"/>
+      <circle cx="52" cy="52" r="${r}" fill="none" stroke="var(--accent)" stroke-width="9"
+        stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - p / 100)}"/>
+    </svg>
+    <div class="num"><b class="mono">${val}</b><span>${label}</span></div>
+  </div>`;
+}
+
+/* ============ 6. 页面 ============ */
+function pageHome() {
+  const sig = signal();
+  const ammo = ammoLeft();
+  const bannerCls = sig.length ? "yes" : "no";
+  const bannerT = sig.length ? "有加仓信号 / 或需核对" : "今日无加仓信号";
+  const bannerD = sig.length
+    ? sig.map(s => `${CFG.targets[s.key].label} 已跌破 ${s.level}% 档，本档额度内可补 ${s.amount} 元（本月余 ${s.room} 元）`).join("；")
+    : `${Object.keys(CFG.targets).length} 只都还在各自的档位上方，或本月额度已满。按纪律：不动手。`;
+
+  const targetCards = Object.keys(CFG.targets).map(key => {
+    const cur = dd(key), nx = nextLevel(key);
+    const t = CFG.targets[key];
+    const d = DATA[key] || {};
+    const pctToNext = nx && nx.far ? Math.max(0, Math.min(100, (cur / nx.level) * 100)) : 100;
+    const gap = (nx && nx.far && d.close > 0) ? (d.close - d.high * (1 - nx.level / 100)) / d.close * 100 : null;
+    const monthUsed = usedThisMonth(key);
+    const full = monthUsed >= t.cap;
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div><b>${t.label}</b> <span class="tiny">${t.code || ""}</span></div>
+        <div class="mono" style="font-size:19px;font-weight:700">${fmt2(cur)}%</div>
+      </div>
+      ${bar(pctToNext, cur > 20)}
+      <div class="tiny" style="margin-top:6px">
+        ${(d.high > 0 && d.close > 0) ? (nx ? (nx.far
+          ? `下一档 ${nx.level}%（该补 ${nx.amount} 元）· 还需再跌 <b class="mono">${gap == null ? "-" : fmt2(gap)}%</b>`
+          : `已跌破 ${nx.level}% 档 · 本档还没补`) : "所有档位已消化")
+        : `还没填价格 · 去「手动更新收盘数据」补上 <b class="mono">${esc(t.label)}</b> 的收盘价与 52 周高`}
+      </div>
+      <div class="tiny" style="margin-top:2px">
+        本月 ${money(monthUsed)} / ${t.cap} 元 ${full ? '<span class="pill off">已满</span>' : '<span class="pill ok">可补</span>'}
+      </div>
+    </div>`;
+  }).join("");
+
+  const usedPct = CFG.ammo > 0 ? (ammo.used / CFG.ammo * 100) : 0;
+  const assetsTxt = CFG.totalAssets > 0 ? `≈${(CFG.totalAssets / 10000).toFixed(2)} 万` : "未填";
+  const hasAmmo = CFG.ammo > 0;
+  const ammoTxt = hasAmmo ? money(ammo.left) : "—";
+
+  return `
+  <div class="banner ${bannerCls}">
+    <div class="t">${bannerT}</div>
+    <div class="d">${bannerD}</div>
+  </div>
+  <div class="row" style="margin-bottom:12px">
+    <div class="stat"><div class="k">总资产</div><div class="v mono">${assetsTxt}</div></div>
+    <div class="stat"><div class="k">月定投</div><div class="v mono">${CFG.monthlyDCA}</div></div>
+    <div class="stat"><div class="k">弹药</div><div class="v mono">${ammoTxt}</div></div>
+  </div>
+  ${targetCards}
+  <div class="card">
+    <div class="h">补仓弹药 · ${hasAmmo ? "余 " + money(ammo.left) + " 元" : "未填"}${hasAmmo ? "" : ' <span class="pill off">去设置页填一次</span>'}</div>
+    ${bar(usedPct)}
+    <div class="row" style="margin-top:8px">
+      <div class="stat"><div class="k">已用</div><div class="v mono">${money(ammo.used)}</div></div>
+      <div class="stat"><div class="k">够几轮完整下跌</div><div class="v mono">${hasAmmo ? ammo.rounds.toFixed(1) + " 轮" : "—"}</div></div>
+      <div class="stat"><div class="k">每月打满够几月</div><div class="v mono">${hasAmmo ? ammo.months.toFixed(1) + " 月" : "—"}</div></div>
+    </div>
+    <div class="tiny" style="margin-top:8px">
+      不按「每档固定 200」折算，按规矩实际算：<b>一轮完整下跌</b>（把每只标的的每一档都补一遍）=
+      ${Object.keys(CFG.targets).map(k => `${CFG.targets[k].label} ${CFG.targets[k].levels.map(([lv, amt]) => `${lv}%补${amt}`).join("/")}`).join(" + ")}
+      = <b>${money(ammo.cycle)} 元</b>；一个月最多也只花 <b>${money(ammo.capMonth)} 元</b>
+      （${Object.keys(CFG.targets).map(k => `${CFG.targets[k].label}封顶 ${CFG.targets[k].cap}`).join(" + ")}）。
+      应急金 ${CFG.emergency > 0 ? money(CFG.emergency) + " 元在微信" : "（未填）"}，独立于弹药，任何时候不动。
+    </div>
+  </div>
+  <div class="card">
+    <details>
+      <summary>手动更新收盘数据</summary>
+      <div style="margin-top:10px">
+        <div class="field"><label>数据日期</label><input id="f_asof" value="${DATA.asOf}" placeholder="2026-11-20"></div>
+        ${Object.keys(CFG.targets).map(k => `
+          <div class="field"><label>${CFG.targets[k].label} 收盘</label><input data-dk="${k}" data-df="close" value="${(DATA[k] || {}).close ?? ""}"></div>
+          <div class="field"><label>${CFG.targets[k].label} 52周高</label><input data-dk="${k}" data-df="high" value="${(DATA[k] || {}).high ?? ""}"></div>`).join("")}
+        <button class="btn" id="btn_save">保存并重算</button>
+        <button class="btn ghost" id="btn_resetdata" style="margin-left:8px">恢复基线</button>
+      </div>
+    </details>
+  </div>`;
+}
+
+function pageLadder() {
+  return Object.keys(CFG.targets).map(key => {
+    const t = CFG.targets[key], cur = dd(key), done = consumedLevels(key);
+    const monthUsed = usedThisMonth(key);
+    const full = monthUsed >= t.cap;
+    const high = DATA[key].high, close = DATA[key].close;
+    const rows = t.levels.map(([lv, amt]) => {
+      const isDone = done.has(lv);
+      const active = cur >= lv;
+      const price = high * (1 - lv / 100);
+      const gap = close > 0 ? (close - price) / close * 100 : NaN;
+      const st = isDone ? '<span class="pill ok">已消化</span>'
+        : active ? '<span class="pill warn">已跌破·待补</span>'
+        : `<span class="pill off">还差 ${isFinite(gap) ? gap.toFixed(2) : "-"}%</span>`;
+      return `<tr>
+        <td class="mono">${lv}%<br><span class="tiny">点 ${price.toFixed(2)}</span></td>
+        <td class="mono">${amt}</td>
+        <td>${st}</td>
+        <td style="text-align:right"><button class="btn ghost" data-log="${key}" data-lv="${lv}" data-amt="${amt}"
+          ${!active || isDone || full ? "disabled" : ""}>记一笔</button></td></tr>`;
+    }).join("");
+    return `<div class="card">
+      <div class="h" style="display:flex;justify-content:space-between;align-items:center">
+        <span>${t.label} · 回撤 ${fmt2(cur)}%</span>
+        <button class="btn ghost" data-reset="${key}" style="padding:4px 9px;font-size:11px">创新高复位</button>
+      </div>
+      <div class="tiny">现价 <b class="mono">${close}</b> · 52 周高 <b class="mono">${high}</b> · 触发点 = 52 周高 ×(1−档位)</div>
+      <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:baseline">
+        <span class="tiny">本月额度 ${money(monthUsed)} / ${t.cap} 元</span>
+        ${full ? '<span class="pill off">已满 · 等下月初</span>' : '<span class="pill ok">还可补</span>'}
+      </div>
+      ${bar(monthUsed / t.cap * 100)}
+      <table style="margin-top:12px">
+        <tr><th>档位 / 触发点</th><th>该补</th><th>状态</th><th></th></tr>
+        ${rows}
+      </table>
+    </div>`;
+  }).join("");
+}
+
+function pageLog() {
+  if (!LOG.length) return `<div class="card"><div class="empty">还没有补仓记录。<br>在「档位」页点「记一笔」会自动记到这里。</div></div>`;
+  const rows = LOG.slice().reverse().map((r, i) => `<tr>
+      <td>${r.date}</td>
+      <td>${CFG.targets[r.target].label}<br><span class="tiny">${r.level}% 档</span></td>
+      <td class="mono">${r.amount}</td>
+      <td style="text-align:right"><button class="btn ghost" data-del="${LOG.length - 1 - i}">删</button></td>
+    </tr>`).join("");
+  const total = LOG.reduce((s, r) => s + r.amount, 0);
+  return `<div class="card">
+    <div class="h">补仓流水 · 共 ${LOG.length} 笔 / ${money(total)} 元</div>
+    <table><tr><th>日期</th><th>标的</th><th>金额</th><th></th></tr>${rows}</table>
+  </div>`;
+}
+
+function pageRule() {
+  return `
+  <div class="card">
+    <div class="h">定投（自动扣款，长期只投不择时）</div>
+    <table><tr><th>基金</th><th>频率</th><th>月折算</th></tr>
+    ${CFG.funds.map(f => `<tr><td>${esc(f.name)}<br><span class="tiny">${esc(f.code)}${f.tag ? " · " + esc(f.tag) : ""}</span></td><td>${esc(f.freq)}</td><td class="mono">${f.perMonth}</td></tr>`).join("")}
+    </table>
+    <div class="tiny" style="margin-top:8px">月投入合计约 ${CFG.funds.reduce((s, f) => s + f.perMonth, 0)} 元（交易日数折算，实际扣款略有浮动）。生活费结余覆盖，不碰子弹。</div>
+  </div>
+  <div class="card">
+    <div class="h">手动补仓</div>
+    <ul class="rules">
+      <li>只补：${Object.keys(CFG.targets).map(k => `${esc(CFG.targets[k].label)}（${esc(CFG.targets[k].code || "")}）`).join("、")}</li>
+      <li>其余基金只吃定投，绝不手动补</li>
+      <li>只有「当日首次跌破尚未消化的档位」才补，不追认浅档</li>
+      <li>绝不连续多日买入；反弹站上浅档则该档复活</li>
+      <li>真创新高（回撤归零）→ 全部档位复位</li>
+      <li>${Object.keys(CFG.targets).map(k => `${CFG.targets[k].label} 月封顶 ${CFG.targets[k].cap}`).join("，")}</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="h">三道刹车</div>
+    <ul class="rules">
+      <li>应急金（微信 ${money(CFG.emergency)}）独立于弹药，绝不动用</li>
+      <li>额度满了就等月初，不借不挪</li>
+      <li>12–24 个月长期建仓，不追求快速满仓</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="h">止盈（现在不执行）</div>
+    <ul class="rules">
+      <li>只有四类信号才讨论：估值分位 ≥80% / 达年化目标 / 再平衡 / 买入逻辑破坏</li>
+      <li>建仓期只积累，不止盈</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="h">数据口径（锁死）</div>
+    <ul class="rules">
+      <li>基准 = 收盘价口径的 52 周滚动高点</li>
+      <li>当前值 = 最近完整收盘价（14:30 时用前一交易日）</li>
+      <li>不看盘中、不看期货、不看净值、不看「最大回撤」</li>
+    </ul>
+  </div>`;
+}
+
+/* ============ 6.5 设置页 ============ */
+const esc = s => String(s == null ? "" : s)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/* 保证每个补仓标的都有价格桶和额度桶 */
+function ensureData() {
+  if (!DATA.used) DATA.used = {};
+  if (!DATA.consumed) DATA.consumed = {};
+  Object.keys(CFG.targets).forEach(k => {
+    if (!DATA[k]) DATA[k] = { close: 0, high: 0 };
+    if (DATA.used[k] == null) DATA.used[k] = 0;
+    if (!DATA.consumed[k]) DATA.consumed[k] = [];
+  });
+}
+
+/* 把设置页表单里的值读回 CFG */
+function collectCfg() {
+  const q = (root, sel) => root.querySelector(sel);
+  document.querySelectorAll("[data-cf]").forEach(inp => {
+    const v = parseFloat(inp.value);
+    if (isFinite(v)) CFG[inp.dataset.cf] = v;
+  });
+  const frows = [...document.querySelectorAll('[data-kind="fund"]')];
+  if (frows.length) CFG.funds = frows.map(r => ({
+    name: q(r, '[data-f="name"]').value.trim(),
+    code: q(r, '[data-f="code"]').value.trim(),
+    freq: q(r, '[data-f="freq"]').value.trim(),
+    perMonth: parseFloat(q(r, '[data-f="perMonth"]').value) || 0
+  }));
+  document.querySelectorAll("[data-target]").forEach(card => {
+    const key = card.dataset.target, t = CFG.targets[key];
+    if (!t) return;
+    t.label = q(card, '[data-tf="label"]').value.trim() || t.label;
+    t.code = q(card, '[data-tf="code"]').value.trim();
+    t.cap = parseFloat(q(card, '[data-tf="cap"]').value) || 0;
+    const levels = [...card.querySelectorAll(".minirow")].map(r => [
+      parseFloat(q(r, '[data-lf="lv"]').value) || 0,
+      parseFloat(q(r, '[data-lf="amt"]').value) || 0
+    ]).filter(([lv]) => lv > 0).sort((a, b) => a[0] - b[0]);
+    if (levels.length) t.levels = levels;
+  });
+}
+const saveCfg = () => save(K_CFG, CFG);
+
+function pageSettings() {
+  const fundRows = CFG.funds.map((f, i) => `<tr data-kind="fund">
+      <td><input class="inp" data-f="name" value="${esc(f.name)}"></td>
+      <td><input class="inp" data-f="code" value="${esc(f.code)}" style="width:70px"></td>
+      <td><input class="inp" data-f="freq" value="${esc(f.freq)}" style="width:62px"></td>
+      <td><input class="inp" data-f="perMonth" value="${f.perMonth}" style="width:50px"></td>
+      <td style="text-align:right"><button class="btn ghost" data-delfund="${i}" style="padding:3px 8px;font-size:12px">删</button></td>
+    </tr>`).join("");
+
+  const tCards = Object.keys(CFG.targets).map(key => {
+    const t = CFG.targets[key];
+    const lvRows = (t.levels || []).map(([lv, amt], i) => `<div class="minirow">
+        <input class="inp" data-lf="lv" data-i="${i}" value="${lv}" style="width:66px">
+        <span class="tiny">% 补</span>
+        <input class="inp" data-lf="amt" data-i="${i}" value="${amt}" style="width:66px">
+        <span class="tiny">元</span>
+        <button class="btn ghost" data-dellevel="${i}" style="margin-left:auto;padding:3px 8px;font-size:12px">删</button>
+      </div>`).join("");
+    return `<div class="card" data-target="${key}">
+      <div class="h">补仓标的 · ${esc(t.label)}</div>
+      <div class="field"><label>名称</label><input class="inp" data-tf="label" value="${esc(t.label)}"></div>
+      <div class="field"><label>代码</label><input class="inp" data-tf="code" value="${esc(t.code || "")}"></div>
+      <div class="field"><label>月封顶(元)</label><input class="inp" data-tf="cap" value="${t.cap}"></div>
+      <div class="tiny" style="margin:10px 0 6px">档位：回撤达 <b>X%</b> → 补 <b>Y 元</b></div>
+      ${lvRows}
+      <div style="margin-top:8px">
+        <button class="btn ghost" data-addlevel="${key}" style="padding:5px 10px;font-size:12px">+ 加一档</button>
+        <button class="btn ghost" data-deltarget="${key}" style="padding:5px 10px;font-size:12px;margin-left:8px">删除这个标的</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  return `
+  <div class="card">
+    <div class="h">基础数字</div>
+    <div class="field"><label>总资产(元)</label><input class="inp" data-cf="totalAssets" value="${CFG.totalAssets}"></div>
+    <div class="field"><label>月定投(元)</label><input class="inp" data-cf="monthlyDCA" value="${CFG.monthlyDCA}"></div>
+    <div class="field"><label>弹药(元)</label><input class="inp" data-cf="ammo" value="${CFG.ammo}"></div>
+    <div class="field"><label>应急金(元)</label><input class="inp" data-cf="emergency" value="${CFG.emergency}"></div>
+  </div>
+
+  <div class="card">
+    <div class="h">定投基金（只吃定投，不手动补）</div>
+    <table>
+      <tr><th>名称</th><th>代码</th><th>频率</th><th>月折算</th><th></th></tr>
+      ${fundRows}
+    </table>
+    <button class="btn ghost" data-addfund="1" style="padding:5px 10px;font-size:12px;margin-top:8px">+ 新增一只基金</button>
+  </div>
+
+  ${tCards}
+  <button class="btn ghost" data-addtarget="1" style="width:100%;padding:9px;margin-bottom:12px">+ 新增一个手动补仓标的</button>
+
+  <div class="card">
+    <div class="h">保存</div>
+    <button class="btn" id="btn_savecfg" style="width:100%">保存规则</button>
+    <div class="tiny" style="margin-top:8px">保存后概览、档位页立刻按新规则重算。数据只存在这台设备上。</div>
+    <button class="btn ghost" id="btn_resetcfg" style="width:100%;margin-top:8px">恢复出厂规则（清空自定义）</button>
+  </div>
+
+  <div class="card">
+    <div class="h">备份 / 迁移</div>
+    <button class="btn ghost" id="btn_export" style="padding:6px 12px;font-size:12px">导出备份文件</button>
+    <div class="tiny" style="margin:10px 0 6px">换设备时把导出的 JSON 粘回来即可恢复：</div>
+    <textarea class="inp" id="imp" rows="3" placeholder='{"cfg":{...},"data":{...},"log":[...]}'></textarea>
+    <button class="btn ghost" id="btn_import" style="padding:6px 12px;font-size:12px;margin-top:8px">导入</button>
+    <div class="tiny" id="impmsg" style="margin-top:6px"></div>
+  </div>`;
+}
+
+/* ============ 7. 渲染与事件 ============ */
+const VIEW = document.getElementById("view");
+let TAB = "home";
+const PAGES = { home: pageHome, ladder: pageLadder, log: pageLog, rule: pageRule, settings: pageSettings };
+
+function render() {
+  document.getElementById("asof").textContent = `数据基准 ${DATA.asOf} · 收盘价口径 · 本机保存`;
+  VIEW.innerHTML = PAGES[TAB]();
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === TAB));
+  window.scrollTo(0, 0);
+}
+
+document.getElementById("nav").addEventListener("click", e => {
+  const b = e.target.closest("button[data-tab]");
+  if (!b) return;
+  TAB = b.dataset.tab;
+  render();
+});
+
+VIEW.addEventListener("click", e => {
+  const t = e.target;
+
+  if (t.id === "btn_save") {
+    const asof = document.getElementById("f_asof").value.trim() || DATA.asOf;
+    const vals = {};
+    document.querySelectorAll("[data-dk]").forEach(inp => {
+      (vals[inp.dataset.dk] = vals[inp.dataset.dk] || {})[inp.dataset.df] = parseFloat(inp.value);
+    });
+    Object.keys(vals).forEach(k => {
+      const v = vals[k];
+      if (isFinite(v.close) && isFinite(v.high) && v.high > 0) {
+        if (!DATA[k]) DATA[k] = {};
+        DATA[k].close = v.close; DATA[k].high = v.high;
+      }
+    });
+    DATA.asOf = asof;
+    save(K_DATA, DATA); render(); return;
+  }
+  if (t.id === "btn_resetdata") { DATA = JSON.parse(JSON.stringify(DEFAULT_DATA)); save(K_DATA, DATA); render(); return; }
+
+  /* ---- 设置页 ---- */
+  if (t.id === "btn_savecfg") { collectCfg(); saveCfg(); render(); return; }
+  if (t.id === "btn_resetcfg") {
+    Object.keys(CFG).forEach(k => delete CFG[k]);
+    Object.assign(CFG, JSON.parse(JSON.stringify(CFG_DEFAULT)));
+    save(K_CFG, CFG); ensureData(); save(K_DATA, DATA); render(); return;
+  }
+  if (t.id === "btn_export") {
+    const dump = JSON.stringify({ cfg: CFG, data: DATA, log: LOG }, null, 2);
+    const a = document.createElement("a");
+    a.href = "data:application/json;charset=utf-8," + encodeURIComponent(dump);
+    a.download = "定投工作台备份.json";
+    document.body.appendChild(a); a.click(); a.remove(); return;
+  }
+  if (t.id === "btn_import") {
+    const msg = document.getElementById("impmsg");
+    const txt = (document.getElementById("imp").value || "").trim();
+    if (!txt) { msg.textContent = "先把备份 JSON 粘进来"; return; }
+    try {
+      const o = JSON.parse(txt);
+      if (o.cfg) { Object.keys(CFG).forEach(k => delete CFG[k]); Object.assign(CFG, o.cfg); save(K_CFG, CFG); }
+      if (o.data) { DATA = o.data; save(K_DATA, DATA); }
+      if (o.log) { LOG = o.log; save(K_LOG, LOG); }
+      ensureData(); save(K_DATA, DATA);
+      msg.textContent = "导入成功";
+      render();
+    } catch (e) { msg.textContent = "导入失败：不是有效的备份 JSON"; }
+    return;
+  }
+  if (t.dataset.addfund) {
+    collectCfg(); saveCfg();
+    CFG.funds.push({ name: "新基金", code: "", freq: "每周 10", perMonth: 0 });
+    saveCfg(); render(); return;
+  }
+  if (t.dataset.delfund != null) {
+    collectCfg(); CFG.funds.splice(Number(t.dataset.delfund), 1); saveCfg(); render(); return;
+  }
+  if (t.dataset.addlevel) {
+    collectCfg();
+    const k = t.dataset.addlevel, lv = CFG.targets[k].levels || [];
+    const last = lv.length ? lv[lv.length - 1] : [10, 100];
+    CFG.targets[k].levels = lv.concat([[Math.min(90, last[0] + 5), last[1]]]);
+    saveCfg(); render(); return;
+  }
+  if (t.dataset.dellevel != null) {
+    collectCfg();
+    const card = t.closest("[data-target]");
+    if (card) { CFG.targets[card.dataset.target].levels.splice(Number(t.dataset.dellevel), 1); saveCfg(); render(); }
+    return;
+  }
+  if (t.dataset.deltarget) {
+    collectCfg();
+    delete CFG.targets[t.dataset.deltarget];
+    delete DATA[t.dataset.deltarget];
+    saveCfg(); save(K_DATA, DATA); render(); return;
+  }
+  if (t.dataset.addtarget) {
+    collectCfg();
+    const k = "t" + Date.now().toString(36);
+    CFG.targets[k] = { label: "新标的", code: "", cap: 100, levels: [[10, 50]] };
+    ensureData(); saveCfg(); save(K_DATA, DATA); render(); return;
+  }
+
+  if (t.dataset.log) {
+    const key = t.dataset.log, lv = Number(t.dataset.lv), amt = Number(t.dataset.amt);
+    LOG.push({ target: key, level: lv, amount: amt, month: thisMonth(), date: DATA.asOf });
+    save(K_LOG, LOG);
+    DATA.used[key] = (DATA.used[key] || 0) + amt;
+    if (!DATA.consumed[key]) DATA.consumed[key] = [];
+    if (!DATA.consumed[key].includes(lv)) DATA.consumed[key].push(lv);
+    save(K_DATA, DATA); render(); return;
+  }
+  if (t.dataset.reset) {
+    DATA.consumed[t.dataset.reset] = [];
+    DATA.used[t.dataset.reset] = 0;
+    save(K_DATA, DATA); render(); return;
+  }
+  if (t.dataset.del != null) { LOG.splice(Number(t.dataset.del), 1); save(K_LOG, LOG); render(); }
+});
+
+render();
+</script>
+</body>
+</html>
