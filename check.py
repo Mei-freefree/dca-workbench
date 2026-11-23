@@ -218,6 +218,7 @@ def write_data_json(state):
             "high": round(s["high"], 2), "highDate": s.get("highDate", ""),
             "dd": round(s["dd"], 2),
             "quote": s.get("quote", "close"), "quoteTime": s.get("quoteTime", ""),
+            "live": bool(s.get("live")),
             "next": nxt, "nextPrice": nxt_price, "dropToNext": drop,
             "used": st.get("used", 0), "cap": t["cap"],
             "consumed": st.get("consumed") or [],
@@ -346,6 +347,7 @@ def main():
             "high": round(s["high"], 2), "highDate": s["high_date"],
             "dd": round(dd, 2), "src": pref,
             "quote": s["quote"], "quoteTime": s["quote_time"],
+            "live": bool(live),
         }
 
     state["lastRun"] = NOW.strftime("%Y-%m-%d %H:%M:%S")
