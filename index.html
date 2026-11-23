@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="定投">
+<meta name="theme-color" content="#2f6fed">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="icon" href="./icon-192.png">
 <title>飞飞 · 定投工作台</title>
 <style>
 :root{
@@ -12,10 +19,11 @@
   --radius:14px; --shadow:0 1px 3px rgba(16,24,40,.06),0 1px 2px rgba(16,24,40,.04);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg);overscroll-behavior:none}
 body{
   margin:0;background:var(--bg);color:var(--ink);
   font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
-  padding-bottom:76px;
+  padding-bottom:76px;overscroll-behavior-y:contain;
 }
 .wrap{max-width:520px;margin:0 auto;padding:14px 14px 0}
 header{position:sticky;top:0;z-index:9;background:rgba(245,246,248,.92);backdrop-filter:blur(8px);padding:10px 0 8px}
@@ -674,6 +682,13 @@ fetch("./data.json", { cache: "no-store" })
   .then(r => (r.ok ? r.json() : null))
   .then(auto => { applyAutoData(auto); })
   .catch(() => { /* 本地打开、或还没生成 data.json 时，用手填数字 */ });
+
+/* 注册 service worker：装了以后从桌面图标打开就是全屏 App（没有浏览器地址栏/底栏），断网也能看上次数据 */
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
