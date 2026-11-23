@@ -1,5 +1,5 @@
 {
-  "lastRun": "2026-11-23 20:45:35",
+  "lastRun": "2026-11-23 20:49:15",
   "snapshot": {
     "a500": {
       "asOf": "2026-11-23",
@@ -7,6 +7,7 @@
       "dd": 25.95,
       "high": 6373.56,
       "highDate": "2026-06-22",
+      "live": true,
       "quote": "close",
       "quoteTime": "",
       "src": "sina"
@@ -17,6 +18,7 @@
       "dd": 19.84,
       "high": 31224.47,
       "highDate": "2026-10-06",
+      "live": false,
       "quote": "close",
       "quoteTime": "",
       "src": "sina"
