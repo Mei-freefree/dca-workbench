@@ -1,21 +1,21 @@
 {
-  "generated": "2026-11-27 01:22 UTC",
-  "lastRun": "2026-11-27 01:22:37",
+  "generated": "2026-11-28 00:50 UTC",
+  "lastRun": "2026-11-28 00:50:23",
   "targets": {
     "a500": {
       "label": "中证A500",
       "fund": "022459",
-      "asOf": "2026-11-26",
-      "close": 4615.01,
+      "asOf": "2026-11-27",
+      "close": 4853.29,
       "high": 6373.56,
       "highDate": "2026-06-22",
-      "dd": 27.59,
+      "dd": 23.85,
       "quote": "close",
       "quoteTime": "",
       "live": false,
       "next": 30,
       "nextPrice": 4461.49,
-      "dropToNext": 3.33,
+      "dropToNext": 8.07,
       "used": 400,
       "cap": 400,
       "consumed": [
@@ -43,5 +43,5 @@
       "consumed": []
     }
   },
-  "asOf": "2026-11-26"
+  "asOf": "2026-11-27"
 }
